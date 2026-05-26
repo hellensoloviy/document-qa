@@ -1,6 +1,8 @@
 import os
 import shutil
 import time
+import json
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -171,3 +173,53 @@ def call_with_retry(chain, input_data, max_retries: int = 3, delay: float = 1.0)
     
     # All retries exhausted
     raise Exception(f"Failed after {max_retries} attempts. Last error: {last_error}")
+
+# ── Function 4: Extract tasks from meeting notes ────────────────────────────
+
+def extract_tasks(text: str) -> dict:
+    """
+    Extract actionable tasks from meeting notes.
+    Returns structured JSON with tasks, owners, and priorities.
+    """
+    prompt = ChatPromptTemplate.from_template("""
+    You are an expert at extracting action items from meeting notes.
+    Analyze the following meeting notes and extract all actionable tasks.
+
+    Meeting notes:
+    {text}
+
+    Return ONLY a valid JSON object in exactly this format, no other text:
+    {{
+        "tasks": [
+            {{
+                "task": "description of the task",
+                "owner": "person responsible (or TBD if not mentioned)",
+                "due_date": "date or deadline if mentioned (or TBD)",
+                "priority": "high/medium/low based on context"
+            }}
+        ],
+        "meeting_date": "date of meeting if mentioned (or unknown)",
+        "total_tasks": number
+    }}
+    """)
+    
+    chain = prompt | llm | StrOutputParser()
+    result = call_with_retry(chain, {"text": text})
+    
+    
+    # Clean up the response in case LLM added extra text
+    clean_result = re.sub(r'```json|```', '', result).strip()
+    
+    try:
+        parsed = json.loads(clean_result)
+        return {
+            "tasks": parsed,
+            "status": "success"
+        }
+    except json.JSONDecodeError:
+        # If parsing fails, return the raw text
+        return {
+            "tasks": result,
+            "status": "success",
+            "note": "Could not parse as structured JSON"
+        }

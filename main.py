@@ -17,10 +17,14 @@ Docs at:  http://localhost:8000/docs
 import os
 import shutil
 import re
+
+from rag_core import process_document, answer_question, summarize_meeting, extract_tasks
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 load_dotenv()
 
@@ -33,6 +37,13 @@ app = FastAPI(
     description="RAG-powered document question answering and meeting summarization",
     version="1.0.0"
 )
+
+# Serve frontend files
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
+
+@app.get("/ui")
+def serve_frontend():
+    return FileResponse("frontend/index.html")
 
 # This allows the API to be called from a browser or frontend
 app.add_middleware(
@@ -179,6 +190,32 @@ async def summarize(request: SummarizeRequest):
             status_code=500,
             detail=f"Failed to summarize: {str(e)}"
         )
+
+@app.post("/extract-tasks")
+async def extract_tasks_endpoint(request: SummarizeRequest):
+    """
+    Extract actionable tasks from meeting notes.
+    Accepts: { "text": "your meeting notes here" }
+    Returns: structured list of tasks with owners and priorities
+    """
+    clean_text = sanitize_text(request.text)
+    
+    if not clean_text:
+        raise HTTPException(status_code=400, detail="Text cannot be empty")
+    
+    if len(clean_text) < 50:
+        raise HTTPException(status_code=400, detail="Text too short to extract tasks from")
+    
+    try:
+        result = extract_tasks(clean_text)
+        return result
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to extract tasks: {str(e)}"
+        )
+
 
 # ── Helper fuctions ──────────────────────────────────────────────────────────────
 

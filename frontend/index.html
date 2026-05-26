@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Q&A + Meeting Assistant</title>
+    <style>
+        /* ── Variables ── */
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --border: #2a2d3a;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --text: #e2e8f0;
+            --text-muted: #64748b;
+            --success: #10b981;
+            --error: #ef4444;
+            --radius: 12px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* ── Header ── */
+        header {
+            margin-bottom: 40px;
+        }
+
+        header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 15px;
+        }
+
+        .accent { color: var(--accent); }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            font-size: 11px;
+            font-weight: 500;
+            padding: 2px 8px;
+            border-radius: 20px;
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+
+        /* ── Inputs ── */
+        textarea, input[type="text"] {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 14px;
+            font-family: inherit;
+            padding: 12px;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus, input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+
+        textarea { min-height: 120px; }
+
+        /* ── File upload ── */
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .upload-area input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .upload-icon { font-size: 32px; margin-bottom: 8px; }
+
+        .upload-area p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .upload-area strong { color: var(--text); }
+
+        /* ── Buttons ── */
+        button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s, opacity 0.2s;
+            margin-top: 12px;
+            font-family: inherit;
+        }
+
+        button:hover { background: var(--accent-hover); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ── Response areas ── */
+        .response {
+            margin-top: 16px;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+            display: none;
+            white-space: pre-wrap;
+        }
+
+        .response.success {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: var(--text);
+            display: block;
+        }
+
+        .response.error {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            display: block;
+        }
+
+        .response.loading {
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            color: var(--text-muted);
+            display: block;
+        }
+
+        /* ── Task cards ── */
+        .task-list { display: flex; flex-direction: column; gap: 10px; }
+
+        .task-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        .task-card .task-title {
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .task-meta span {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .priority-high { color: #f87171 !important; }
+        .priority-medium { color: #fbbf24 !important; }
+        .priority-low { color: #34d399 !important; }
+
+        /* ── Status indicator ── */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--error);
+        }
+
+        .status-dot.connected { background: var(--success); }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <header>
+            <h1>Document <span class="accent">Q&A</span> + Meeting Assistant</h1>
+            <p>Upload documents, ask questions, summarize meetings, and extract tasks.</p>
+        </header>
+
+        <!-- Status bar -->
+        <div class="status-bar">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Checking API connection...</span>
+        </div>
+
+        <!-- Section 1: Upload Document -->
+        <div class="card">
+            <h2>📄 Upload Document <span class="badge">RAG</span></h2>
+            <div class="upload-area" id="uploadArea">
+                <input type="file" id="fileInput" accept=".pdf" />
+                <div class="upload-icon">📁</div>
+                <p><strong>Click to upload a PDF</strong></p>
+                <p>Document will be stored for Q&A</p>
+            </div>
+            <button onclick="uploadDocument()" id="uploadBtn">Upload Document</button>
+            <div class="response" id="uploadResponse"></div>
+        </div>
+
+        <!-- Section 2: Ask a Question -->
+        <div class="card">
+            <h2>💬 Ask a Question <span class="badge">Q&A</span></h2>
+            <input
+                type="text"
+                id="questionInput"
+                placeholder="e.g. What is this document about?"
+            />
+            <button onclick="askQuestion()" id="askBtn">Ask Question</button>
+            <div class="response" id="askResponse"></div>
+        </div>
+
+        <!-- Section 3: Summarize Meeting -->
+        <div class="card">
+            <h2>📝 Summarize Meeting <span class="badge">AI</span></h2>
+            <textarea
+                id="summaryInput"
+                placeholder="Paste your meeting notes or transcript here..."
+            ></textarea>
+            <button onclick="summarizeMeeting()" id="summarizeBtn">Summarize</button>
+            <div class="response" id="summaryResponse"></div>
+        </div>
+
+        <!-- Section 4: Extract Tasks -->
+        <div class="card">
+            <h2>✅ Extract Tasks <span class="badge">Calendar</span></h2>
+            <textarea
+                id="tasksInput"
+                placeholder="Paste meeting notes to extract action items and tasks..."
+            ></textarea>
+            <button onclick="extractTasks()" id="tasksBtn">Extract Tasks</button>
+            <div class="response" id="tasksResponse"></div>
+        </div>
+
+    </div>
+
+    <script>
+        const API = 'http://localhost:8000';
+
+        // ── Check API connection on load ──────────────────────────────────
+
+        async function checkConnection() {
+            try {
+                const res = await fetch(`${API}/`);
+                const data = await res.json();
+                document.getElementById('statusDot').classList.add('connected');
+                document.getElementById('statusText').textContent =
+                    `API connected — ${data.database}`;
+            } catch {
+                document.getElementById('statusText').textContent =
+                    'API not reachable — is the server running?';
+            }
+        }
+
+        checkConnection();
+
+        // ── Helper: show response ─────────────────────────────────────────
+
+        function showResponse(id, message, type = 'success') {
+            const el = document.getElementById(id);
+            el.textContent = message;
+            el.className = `response ${type}`;
+        }
+
+        function setLoading(btnId, responseId, loading) {
+            document.getElementById(btnId).disabled = loading;
+            if (loading) showResponse(responseId, 'Processing...', 'loading');
+        }
+
+        // ── Upload Document ───────────────────────────────────────────────
+
+        async function uploadDocument() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                showResponse('uploadResponse', 'Please select a file first.', 'error');
+                return;
+            }
+
+            setLoading('uploadBtn', 'uploadResponse', true);
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const res = await fetch(`${API}/upload`, {
+                    method: 'POST',
+                    body: formData
+                    // Note: don't set Content-Type header for FormData
+                    // the browser sets it automatically with the boundary
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    showResponse('uploadResponse',
+                        `✓ ${data.filename} uploaded successfully\n` +
+                        `Pages: ${data.pages_loaded} | Chunks: ${data.chunks_created}`,
+                        'success'
+                    );
+                } else {
+                    showResponse('uploadResponse', `Error: ${data.detail}`, 'error');
+                }
+            } catch (err) {
+                showResponse('uploadResponse', `Failed to connect to API: ${err.message}`, 'error');
+            } finally {
+                document.getElementById('uploadBtn').disabled = false;
+            }
+        }
+
+        // ── Ask Question ──────────────────────────────────────────────────
+
+        async function askQuestion() {
+            const question = document.getElementById('questionInput').value.trim();
+
+            if (!question) {
+                showResponse('askResponse', 'Please enter a question.', 'error');
+                return;
+            }
+
+            setLoading('askBtn', 'askResponse', true);
+
+            try {
+                const res = await fetch(`${API}/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    showResponse('askResponse', data.answer, 'success');
+                } else {
+                    showResponse('askResponse', `Error: ${data.detail}`, 'error');
+                }
+            } catch (err) {
+                showResponse('askResponse', `Failed to connect to API: ${err.message}`, 'error');
+            } finally {
+                document.getElementById('askBtn').disabled = false;
+            }
+        }
+
+        // ── Summarize Meeting ─────────────────────────────────────────────
+
+        async function summarizeMeeting() {
+            const text = document.getElementById('summaryInput').value.trim();
+
+            if (!text) {
+                showResponse('summaryResponse', 'Please paste some meeting notes.', 'error');
+                return;
+            }
+
+            setLoading('summarizeBtn', 'summaryResponse', true);
+
+            try {
+                const res = await fetch(`${API}/summarize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    showResponse('summaryResponse', data.summary, 'success');
+                } else {
+                    showResponse('summaryResponse', `Error: ${data.detail}`, 'error');
+                }
+            } catch (err) {
+                showResponse('summaryResponse', `Failed to connect to API: ${err.message}`, 'error');
+            } finally {
+                document.getElementById('summarizeBtn').disabled = false;
+            }
+        }
+
+        // ── Extract Tasks ─────────────────────────────────────────────────
+
+        async function extractTasks() {
+            const text = document.getElementById('tasksInput').value.trim();
+
+            if (!text) {
+                showResponse('tasksResponse', 'Please paste some meeting notes.', 'error');
+                return;
+            }
+
+            setLoading('tasksBtn', 'tasksResponse', true);
+
+            try {
+                const res = await fetch(`${API}/extract-tasks`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    renderTasks('tasksResponse', data.tasks);
+                } else {
+                    showResponse('tasksResponse', `Error: ${data.detail}`, 'error');
+                }
+            } catch (err) {
+                showResponse('tasksResponse', `Failed to connect to API: ${err.message}`, 'error');
+            } finally {
+                document.getElementById('tasksBtn').disabled = false;
+            }
+        }
+
+        // ── Render task cards ─────────────────────────────────────────────
+
+        function renderTasks(responseId, tasksData) {
+            const el = document.getElementById(responseId);
+
+            // Handle case where LLM returned raw text instead of JSON
+            if (typeof tasksData === 'string') {
+                showResponse(responseId, tasksData, 'success');
+                return;
+            }
+
+            const tasks = tasksData.tasks || [];
+
+            if (tasks.length === 0) {
+                showResponse(responseId, 'No tasks found in the meeting notes.', 'success');
+                return;
+            }
+
+            let html = `<div class="task-list">`;
+
+            tasks.forEach(task => {
+                const priorityClass = `priority-${task.priority?.toLowerCase() || 'medium'}`;
+                html += `
+                    <div class="task-card">
+                        <div class="task-title">${task.task}</div>
+                        <div class="task-meta">
+                            <span>👤 ${task.owner}</span>
+                            <span>📅 ${task.due_date}</span>
+                            <span class="${priorityClass}">● ${task.priority} priority</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+
+            el.innerHTML = html;
+            el.className = 'response success';
+        }
+
+        // ── Allow pressing Enter to ask question ──────────────────────────
+
+        document.getElementById('questionInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') askQuestion();
+        });
+
+    </script>
+</body>
+</html>
