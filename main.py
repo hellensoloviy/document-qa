@@ -1,3 +1,19 @@
+"""
+Document Q&A API
+================
+A RAG-powered FastAPI service for querying documents and summarizing meetings.
+
+Endpoints:
+    GET  /          — health check
+    POST /upload    — upload a PDF to the knowledge base
+    POST /ask       — ask a question about uploaded documents  
+    POST /summarize — summarize meeting notes into structured format
+
+Run with: uvicorn main:app --reload
+Docs at:  http://localhost:8000/docs
+"""
+
+
 import os
 import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException
@@ -39,9 +55,13 @@ class SummarizeRequest(BaseModel):
 
 @app.get("/")
 def root():
-    """Health check — confirms the API is running"""
-    return {"status": "running", "message": "Document Q&A API is ready"}
-
+    """Health check — confirms the API is running and database status"""
+    db_exists = os.path.exists("./chroma_db")
+    return {
+        "status": "running",
+        "message": "Document Q&A API is ready",
+        "database": "loaded" if db_exists else "empty — please upload a document first"
+    }
 
 @app.post("/upload")
 async def upload_document(file: UploadFile = File(...)):

@@ -1,5 +1,6 @@
 import os
 import shutil
+import time
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -98,7 +99,8 @@ Question: {question}
         | StrOutputParser()
     )
     
-    answer = chain.invoke(question)
+    # Call with retry
+    answer = call_with_retry(chain, question)
     
     return {
         "question": question,
@@ -138,9 +140,34 @@ NEXT STEPS:
     
     chain = prompt | llm | StrOutputParser()
     
-    result = chain.invoke({"text": text})
+    result = call_with_retry(chain, {"text": text})
     
     return {
         "summary": result,
         "status": "success"
     }
+
+# ── Function 4: Retry helper ──────────────────────────────────────────────────
+
+def call_with_retry(chain, input_data, max_retries: int = 3, delay: float = 1.0):
+    """
+    Call a LangChain chain with automatic retry on failure.
+    Waits longer between each retry (exponential backoff).
+    
+    max_retries: how many times to try before giving up
+    delay: starting wait time in seconds (doubles each retry)
+    """
+    last_error = None
+    
+    for attempt in range(max_retries):
+        try:
+            return chain.invoke(input_data)
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                wait_time = delay * (2 ** attempt)  # 1s, 2s, 4s
+                print(f"Attempt {attempt + 1} failed, retrying in {wait_time}s... Error: {e}")
+                time.sleep(wait_time)
+    
+    # All retries exhausted
+    raise Exception(f"Failed after {max_retries} attempts. Last error: {last_error}")
