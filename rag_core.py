@@ -116,27 +116,27 @@ def summarize_meeting(text: str) -> dict:
     Take raw meeting notes or transcript and return structured summary.
     """
     prompt = ChatPromptTemplate.from_template("""
-You are an expert at summarizing meetings. 
-Analyze the following meeting notes and provide a structured summary.
+    You are an expert at summarizing meetings. 
+    Analyze the following meeting notes and provide a structured summary.
 
-Meeting notes:
-{text}
+    Meeting notes:
+    {text}
 
-Provide your response in this exact format:
+    Provide your response in this exact format:
 
-SUMMARY:
-[2-3 sentence overview of the meeting]
+    SUMMARY:
+    [2-3 sentence overview of the meeting]
 
-KEY DECISIONS:
-- [decision 1]
-- [decision 2]
+    KEY DECISIONS:
+    - [decision 1]
+    - [decision 2]
 
-ACTION ITEMS:
-- [action item] — Owner: [person if mentioned, otherwise "TBD"]
+    ACTION ITEMS:
+    - [action item] — Owner: [person if mentioned, otherwise "TBD"]
 
-NEXT STEPS:
-- [next step 1]
-""")
+    NEXT STEPS:
+    - [next step 1]
+    """)
     
     chain = prompt | llm | StrOutputParser()
     

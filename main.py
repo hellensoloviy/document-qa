@@ -16,6 +16,7 @@ Docs at:  http://localhost:8000/docs
 
 import os
 import shutil
+import re
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -127,15 +128,17 @@ async def ask_question(request: QuestionRequest):
     Accepts: { "question": "your question here" }
     Returns: answer based on document content
     """
-    # Validate input
-    if not request.question.strip():
+    # Sanitize first, then validate
+    clean_question = sanitize_text(request.question)
+    
+    if not clean_question:
         raise HTTPException(
             status_code=400,
             detail="Question cannot be empty"
         )
     
     try:
-        result = answer_question(request.question)
+        result = answer_question(clean_question)
         return result
     
     except Exception as e:
@@ -157,6 +160,9 @@ async def summarize(request: SummarizeRequest):
             status_code=400,
             detail="Text cannot be empty"
         )
+
+    # Sanitize input — remove invisible control characters
+    clean_text = sanitize_text(request.text)
     
     if len(request.text) < 50:
         raise HTTPException(
@@ -173,3 +179,9 @@ async def summarize(request: SummarizeRequest):
             status_code=500,
             detail=f"Failed to summarize: {str(e)}"
         )
+
+# ── Helper fuctions ──────────────────────────────────────────────────────────────
+
+def sanitize_text(text: str) -> str:
+    """Remove invisible control characters from user input"""
+    return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text).strip()
