@@ -28,8 +28,6 @@ from fastapi.responses import FileResponse
 
 load_dotenv()
 
-from rag_core import process_document, answer_question, summarize_meeting
-
 # ── App setup ──────────────────────────────────────────────────────────────
 
 app = FastAPI(
@@ -46,6 +44,9 @@ def serve_frontend():
     return FileResponse("frontend/index.html")
 
 # This allows the API to be called from a browser or frontend
+# Allow all origins for local development and demo purposes.
+# In production, replace "*" with your actual frontend domain:
+# allow_origins=["https://yourdomain.com"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -175,14 +176,14 @@ async def summarize(request: SummarizeRequest):
     # Sanitize input — remove invisible control characters
     clean_text = sanitize_text(request.text)
     
-    if len(request.text) < 50:
+    if len(clean_text) < 50:
         raise HTTPException(
             status_code=400,
             detail="Text is too short to summarize meaningfully"
         )
     
     try:
-        result = summarize_meeting(request.text)
+        result = summarize_meeting(clean_text)
         return result
     
     except Exception as e:

@@ -21,6 +21,24 @@ CHROMA_PATH = "./chroma_db"
 embeddings = OpenAIEmbeddings()
 llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
 
+_vectorstore = None
+
+# ─────────────────────────────────
+
+def get_vectorstore():
+    """
+    Return the vectorstore, creating it if it doesn't exist yet.
+    This is a lazy singleton — created once, reused after that.
+    """
+    global _vectorstore
+
+    if _vectorstore is None:
+        _vectorstore = Chroma(
+            persist_directory=CHROMA_PATH,
+            embedding_function=embeddings
+        )
+
+    return _vectorstore
 
 # ── Function 1: Process and store a document ───────────────────────────────
 
@@ -29,43 +47,42 @@ def process_document(file_path: str) -> dict:
     Load a PDF, split into chunks, store in ChromaDB.
     Returns info about what was processed.
     """
-    # Load
+    global _vectorstore
+
     loader = PyPDFLoader(file_path)
     documents = loader.load()
 
-    # Check if PDF actually contains readable text
     total_text = " ".join([doc.page_content for doc in documents])
     if len(total_text.strip()) < 100:
         raise ValueError("PDF appears to contain no readable text — it may be image-based")
-    
-    # Split
+
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
         chunk_overlap=50
     )
     chunks = splitter.split_documents(documents)
-    
-    # Check if chunks are not empty
+
     if len(chunks) == 0:
         raise ValueError("No chunks were created from the document. File error.")
-    
-    # Clear existing collection before storing new document
-    if os.path.exists(CHROMA_PATH):
-        shutil.rmtree(CHROMA_PATH)
 
-    # Store
-    vectorstore = Chroma.from_documents(
+    # Clear existing data through ChromaDB's own API.
+    # Never delete the folder with shutil.rmtree while the process is running —
+    # ChromaDB holds the SQLite connection open and the file becomes readonly.
+    if _vectorstore is not None:
+        _vectorstore.delete_collection()
+        _vectorstore = None
+
+    _vectorstore = Chroma.from_documents(
         documents=chunks,
         embedding=embeddings,
         persist_directory=CHROMA_PATH
     )
-    
+
     return {
         "pages_loaded": len(documents),
         "chunks_created": len(chunks),
         "status": "success"
     }
-
 
 # ── Function 2: Answer a question ──────────────────────────────────────────
 
@@ -73,43 +90,35 @@ def answer_question(question: str) -> dict:
     """
     Retrieve relevant chunks from ChromaDB and answer the question.
     """
-    # Load existing vectorstore
-    vectorstore = Chroma(
-        persist_directory=CHROMA_PATH,
-        embedding_function=embeddings
-    )
-    
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-    
+    retriever = get_vectorstore().as_retriever(search_kwargs={"k": 3})
+
     prompt = ChatPromptTemplate.from_template("""
-Answer the question based only on the following context.
-If the answer is not in the context, say "I don't have enough information in the provided documents to answer this question."
+    Answer the question based only on the following context.
+    If the answer is not in the context, say "I don't have enough information in the provided documents to answer this question."
 
-Context:
-{context}
+    Context:
+    {context}
 
-Question: {question}
-""")
-    
+    Question: {question}
+    """)
+
     def format_docs(docs):
         return "\n\n".join(doc.page_content for doc in docs)
-    
+
     chain = (
         {"context": retriever | format_docs, "question": RunnablePassthrough()}
         | prompt
         | llm
         | StrOutputParser()
     )
-    
-    # Call with retry
+
     answer = call_with_retry(chain, question)
-    
+
     return {
         "question": question,
         "answer": answer,
         "status": "success"
     }
-
 
 # ── Function 3: Summarize meeting notes ────────────────────────────────────
 
@@ -174,7 +183,7 @@ def call_with_retry(chain, input_data, max_retries: int = 3, delay: float = 1.0)
     # All retries exhausted
     raise Exception(f"Failed after {max_retries} attempts. Last error: {last_error}")
 
-# ── Function 4: Extract tasks from meeting notes ────────────────────────────
+# ── Function 5: Extract tasks from meeting notes ────────────────────────────
 
 def extract_tasks(text: str) -> dict:
     """

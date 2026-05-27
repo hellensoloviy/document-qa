@@ -188,3 +188,4 @@ Open `http://localhost:8000/docs` for the Swagger API explorer.
 - [ ] Evaluation framework using RAGAs for automated quality measurement
 - [ ] Rate limiting and token usage monitoring
 - [ ] Q&A history per document with automatic reset on new upload
+- [ ] Make LLM calls async to avoid blocking the event loop under concurrent load
