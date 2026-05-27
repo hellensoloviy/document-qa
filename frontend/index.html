@@ -5,528 +5,503 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document Q&A + Meeting Assistant</title>
     <style>
-        /* ── Variables ── */
         :root {
             --bg: #0f1117;
             --surface: #1a1d27;
+            --surface2: #13151f;
             --border: #2a2d3a;
             --accent: #6366f1;
             --accent-hover: #818cf8;
+            --accent-dim: rgba(99,102,241,0.12);
             --text: #e2e8f0;
             --text-muted: #64748b;
-            --success: #10b981;
-            --error: #ef4444;
+            --success-bg: rgba(16,185,129,0.08);
+            --success-border: rgba(16,185,129,0.2);
+            --error-bg: rgba(239,68,68,0.08);
+            --error-border: rgba(239,68,68,0.25);
+            --loading-bg: rgba(99,102,241,0.08);
+            --loading-border: rgba(99,102,241,0.2);
             --radius: 12px;
+            --radius-sm: 8px;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
-            padding: 40px 20px;
+            padding: 40px 20px 80px;
         }
 
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
+        .container { max-width: 820px; margin: 0 auto; }
 
-        /* ── Header ── */
-        header {
-            margin-bottom: 40px;
-        }
-
-        header h1 {
-            font-size: 28px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            margin-bottom: 8px;
-        }
-
-        header p {
-            color: var(--text-muted);
-            font-size: 15px;
-        }
-
+        /* Header */
+        .header { margin-bottom: 32px; }
+        .header h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.3px; margin-bottom: 6px; }
+        .header p { color: var(--text-muted); font-size: 14px; }
         .accent { color: var(--accent); }
 
-        /* ── Cards ── */
+        /* Status bar */
+        .status-bar {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            margin-bottom: 28px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .dot { width: 7px; height: 7px; border-radius: 50%; background: #ef4444; flex-shrink: 0; }
+        .dot.on { background: #10b981; }
+
+        /* Section tabs */
+        .tabs {
+            display: flex; gap: 4px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 4px;
+            margin-bottom: 24px;
+        }
+        .tab {
+            flex: 1; padding: 9px;
+            background: none; border: none;
+            color: var(--text-muted);
+            font-size: 14px; font-weight: 500;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+        .tab.active {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+        .tab:hover:not(.active) { color: var(--text); }
+
+        /* Sections */
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* Cards */
         .card {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 24px;
-            margin-bottom: 20px;
-        }
-
-        .card h2 {
-            font-size: 16px;
-            font-weight: 600;
+            padding: 20px;
             margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        }
+        .card-title {
+            font-size: 13px; font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 14px;
         }
 
-        .badge {
-            font-size: 11px;
-            font-weight: 500;
-            padding: 2px 8px;
-            border-radius: 20px;
-            background: rgba(99, 102, 241, 0.15);
-            color: var(--accent);
-            border: 1px solid rgba(99, 102, 241, 0.3);
-        }
-
-        /* ── Inputs ── */
-        textarea, input[type="text"] {
+        /* Inputs */
+        input[type="text"], textarea {
             width: 100%;
-            background: var(--bg);
+            background: var(--surface2);
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             color: var(--text);
             font-size: 14px;
             font-family: inherit;
-            padding: 12px;
-            resize: vertical;
+            padding: 10px 12px;
             outline: none;
-            transition: border-color 0.2s;
+            transition: border-color 0.15s;
         }
+        input[type="text"] { height: 40px; }
+        textarea { min-height: 130px; resize: vertical; line-height: 1.5; }
+        input[type="text"]:focus, textarea:focus { border-color: var(--accent); }
+        input[type="text"]::placeholder, textarea::placeholder { color: var(--text-muted); }
 
-        textarea:focus, input[type="text"]:focus {
-            border-color: var(--accent);
-        }
-
-        textarea { min-height: 120px; }
-
-        /* ── File upload ── */
-        .upload-area {
-            border: 2px dashed var(--border);
-            border-radius: 8px;
-            padding: 32px;
+        /* Upload area */
+        .upload-zone {
+            border: 1.5px dashed var(--border);
+            border-radius: var(--radius-sm);
+            padding: 28px 20px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.2s;
             position: relative;
+            transition: all 0.15s;
+        }
+        .upload-zone:hover { border-color: var(--accent); background: var(--accent-dim); }
+        .upload-zone input[type="file"] {
+            position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+        }
+        .upload-zone .icon { font-size: 28px; margin-bottom: 6px; }
+        .upload-zone p { font-size: 13px; color: var(--text-muted); }
+        .upload-zone strong { color: var(--text); font-weight: 500; }
+        .upload-filename {
+            margin-top: 8px; font-size: 13px;
+            color: var(--accent); display: none;
         }
 
-        .upload-area:hover {
-            border-color: var(--accent);
-            background: rgba(99, 102, 241, 0.05);
-        }
-
-        .upload-area input[type="file"] {
-            position: absolute;
-            inset: 0;
-            opacity: 0;
-            cursor: pointer;
-            width: 100%;
-            height: 100%;
-        }
-
-        .upload-icon { font-size: 32px; margin-bottom: 8px; }
-
-        .upload-area p {
+        /* Textarea with clear button */
+        .textarea-wrap { position: relative; }
+        .clear-btn {
+            position: absolute; top: 8px; right: 8px;
+            background: var(--border); border: none;
             color: var(--text-muted);
-            font-size: 14px;
+            font-size: 11px; font-weight: 500;
+            padding: 3px 8px; border-radius: 4px;
+            cursor: pointer; font-family: inherit;
+            transition: all 0.15s;
+            margin: 0;
         }
+        .clear-btn:hover { background: var(--text-muted); color: var(--text); }
 
-        .upload-area strong { color: var(--text); }
+        /* Toggle */
+        .toggle-row {
+            display: flex; align-items: center; gap: 10px;
+            margin-top: 12px; padding: 10px 12px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+        }
+        .toggle-row:hover { border-color: var(--accent); }
+        .toggle {
+            width: 32px; height: 18px;
+            background: var(--border);
+            border-radius: 9px;
+            position: relative;
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+        .toggle.on { background: var(--accent); }
+        .toggle::after {
+            content: '';
+            position: absolute; top: 2px; left: 2px;
+            width: 14px; height: 14px;
+            background: white; border-radius: 50%;
+            transition: transform 0.2s;
+        }
+        .toggle.on::after { transform: translateX(14px); }
+        .toggle-label { font-size: 13px; color: var(--text-muted); user-select: none; }
+        .toggle-label strong { color: var(--text); font-weight: 500; }
 
-        /* ── Buttons ── */
-        button {
+        /* Buttons */
+        .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+        button.primary {
             background: var(--accent);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 20px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.2s, opacity 0.2s;
-            margin-top: 12px;
-            font-family: inherit;
+            color: white; border: none;
+            border-radius: var(--radius-sm);
+            padding: 9px 18px;
+            font-size: 14px; font-weight: 500;
+            cursor: pointer; font-family: inherit;
+            transition: background 0.15s, opacity 0.15s;
         }
+        button.primary:hover { background: var(--accent-hover); }
+        button.primary:disabled { opacity: 0.4; cursor: not-allowed; background: var(--text-muted); }
 
-        button:hover { background: var(--accent-hover); }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        /* ── Response areas ── */
+        /* Responses */
         .response {
-            margin-top: 16px;
-            padding: 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            line-height: 1.6;
-            display: none;
-            white-space: pre-wrap;
-        }
-
-        .response.success {
-            background: rgba(16, 185, 129, 0.08);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            color: var(--text);
-            display: block;
-        }
-
-        .response.error {
-            background: rgba(239, 68, 68, 0.08);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            color: #fca5a5;
-            display: block;
-        }
-
-        .response.loading {
-            background: rgba(99, 102, 241, 0.08);
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            color: var(--text-muted);
-            display: block;
-        }
-
-        /* ── Task cards ── */
-        .task-list { display: flex; flex-direction: column; gap: 10px; }
-
-        .task-card {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
+            margin-top: 14px;
             padding: 14px;
+            border-radius: var(--radius-sm);
+            font-size: 14px; line-height: 1.65;
+            display: none; white-space: pre-wrap;
         }
+        .response.success { background: var(--success-bg); border: 1px solid var(--success-border); display: block; }
+        .response.error   { background: var(--error-bg);   border: 1px solid var(--error-border);   display: block; color: #fca5a5; }
+        .response.loading { background: var(--loading-bg); border: 1px solid var(--loading-border); display: block; color: var(--text-muted); }
 
-        .task-card .task-title {
-            font-weight: 500;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-
-        .task-meta {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .task-meta span {
-            font-size: 12px;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .priority-high { color: #f87171 !important; }
-        .priority-medium { color: #fbbf24 !important; }
-        .priority-low { color: #34d399 !important; }
-
-        /* ── Status indicator ── */
-        .status-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
-            background: var(--surface);
+        /* Task cards */
+        .task-list { display: flex; flex-direction: column; gap: 8px; }
+        .task-item {
+            background: var(--surface2);
             border: 1px solid var(--border);
-            border-radius: 8px;
-            margin-bottom: 24px;
-            font-size: 13px;
-            color: var(--text-muted);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
         }
+        .task-item .task-name { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+        .task-meta { display: flex; flex-wrap: wrap; gap: 10px; }
+        .task-meta span { font-size: 12px; color: var(--text-muted); }
+        .p-high   { color: #f87171 !important; }
+        .p-medium { color: #fbbf24 !important; }
+        .p-low    { color: #34d399 !important; }
 
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--error);
+        .divider {
+            height: 1px; background: var(--border);
+            margin: 16px 0;
         }
-
-        .status-dot.connected { background: var(--success); }
     </style>
 </head>
 <body>
-    <div class="container">
+<div class="container">
 
-        <header>
-            <h1>Document <span class="accent">Q&A</span> + Meeting Assistant</h1>
-            <p>Upload documents, ask questions, summarize meetings, and extract tasks.</p>
-        </header>
+    <div class="header">
+        <h1>Document <span class="accent">Q&A</span> + Meeting Assistant</h1>
+        <p>Upload documents to ask questions, or paste meeting notes to summarize and extract tasks.</p>
+    </div>
 
-        <!-- Status bar -->
-        <div class="status-bar">
-            <div class="status-dot" id="statusDot"></div>
-            <span id="statusText">Checking API connection...</span>
-        </div>
+    <div class="status-bar">
+        <div class="dot" id="dot"></div>
+        <span id="statusText">Checking connection...</span>
+    </div>
 
-        <!-- Section 1: Upload Document -->
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('docs', this)">📄 Document Q&A</button>
+        <button class="tab" onclick="switchTab('meetings', this)">📝 Meeting Assistant</button>
+    </div>
+
+    <!-- ── Section: Documents ── -->
+    <div class="section active" id="tab-docs">
+
         <div class="card">
-            <h2>📄 Upload Document <span class="badge">RAG</span></h2>
-            <div class="upload-area" id="uploadArea">
-                <input type="file" id="fileInput" accept=".pdf" />
-                <div class="upload-icon">📁</div>
-                <p><strong>Click to upload a PDF</strong></p>
-                <p>Document will be stored for Q&A</p>
+            <div class="card-title">Upload document</div>
+            <div class="upload-zone" id="uploadZone">
+                <input type="file" id="fileInput" accept=".pdf" onchange="onFileSelected()" />
+                <div class="icon">📁</div>
+                <p><strong>Click to choose a PDF</strong></p>
+                <p>Document replaces current knowledge base</p>
             </div>
-            <button onclick="uploadDocument()" id="uploadBtn">Upload Document</button>
-            <div class="response" id="uploadResponse"></div>
+            <div class="upload-filename" id="fileName"></div>
+            <div class="btn-row">
+                <button class="primary" id="uploadBtn" onclick="uploadDoc()" disabled>Upload</button>
+            </div>
+            <div class="response" id="uploadResp"></div>
         </div>
 
-        <!-- Section 2: Ask a Question -->
         <div class="card">
-            <h2>💬 Ask a Question <span class="badge">Q&A</span></h2>
-            <input
-                type="text"
-                id="questionInput"
+            <div class="card-title">Ask a question</div>
+            <input type="text" id="questionInput"
                 placeholder="e.g. What is this document about?"
+                oninput="syncBtn('questionInput','askBtn')"
+                onkeydown="if(event.key==='Enter') askQ()"
             />
-            <button onclick="askQuestion()" id="askBtn">Ask Question</button>
-            <div class="response" id="askResponse"></div>
-        </div>
-
-        <!-- Section 3: Summarize Meeting -->
-        <div class="card">
-            <h2>📝 Summarize Meeting <span class="badge">AI</span></h2>
-            <textarea
-                id="summaryInput"
-                placeholder="Paste your meeting notes or transcript here..."
-            ></textarea>
-            <button onclick="summarizeMeeting()" id="summarizeBtn">Summarize</button>
-            <div class="response" id="summaryResponse"></div>
-        </div>
-
-        <!-- Section 4: Extract Tasks -->
-        <div class="card">
-            <h2>✅ Extract Tasks <span class="badge">Calendar</span></h2>
-            <textarea
-                id="tasksInput"
-                placeholder="Paste meeting notes to extract action items and tasks..."
-            ></textarea>
-            <button onclick="extractTasks()" id="tasksBtn">Extract Tasks</button>
-            <div class="response" id="tasksResponse"></div>
+            <div class="btn-row">
+                <button class="primary" id="askBtn" onclick="askQ()" disabled>Ask</button>
+            </div>
+            <div class="response" id="askResp"></div>
         </div>
 
     </div>
 
-    <script>
-        const API = 'http://localhost:8000';
+    <!-- ── Section: Meetings ── -->
+    <div class="section" id="tab-meetings">
 
-        // ── Check API connection on load ──────────────────────────────────
+        <div class="card">
+            <div class="card-title">Meeting notes</div>
+            <div class="textarea-wrap">
+                <textarea id="meetingInput"
+                    placeholder="Paste your meeting notes or transcript here — any format, any length..."
+                    oninput="syncBtn('meetingInput','processBtn')"
+                ></textarea>
+                <button class="clear-btn" onclick="clearMeeting()">Clear</button>
+            </div>
 
-        async function checkConnection() {
-            try {
-                const res = await fetch(`${API}/`);
-                const data = await res.json();
-                document.getElementById('statusDot').classList.add('connected');
-                document.getElementById('statusText').textContent =
-                    `API connected — ${data.database}`;
-            } catch {
-                document.getElementById('statusText').textContent =
-                    'API not reachable — is the server running?';
-            }
+            <div class="toggle-row" onclick="toggleExtract()">
+                <div class="toggle" id="extractToggle"></div>
+                <span class="toggle-label">
+                    <strong>Extract tasks</strong> — get action items with owners and priorities
+                </span>
+            </div>
+
+            <div class="btn-row">
+                <button class="primary" id="processBtn" onclick="processMeeting()" disabled>Process</button>
+            </div>
+        </div>
+
+        <div class="response" id="summaryResp"></div>
+        <div id="tasksContainer" style="display:none; margin-top: 14px;"></div>
+
+    </div>
+
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let extractOn = false;
+
+async function checkApi() {
+    try {
+        const r = await fetch(`${API}/`);
+        const d = await r.json();
+        document.getElementById('dot').classList.add('on');
+        document.getElementById('statusText').textContent =
+            'API connected — ' + (d.database || 'ready');
+    } catch {
+        document.getElementById('statusText').textContent =
+            'API not reachable — make sure uvicorn is running';
+    }
+}
+checkApi();
+
+function switchTab(name, el) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+}
+
+function syncBtn(inputId, btnId) {
+    const val = document.getElementById(inputId).value.trim();
+    document.getElementById(btnId).disabled = val.length === 0;
+}
+
+function show(id, msg, type) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = 'response ' + type;
+}
+
+function setLoading(btnId, respId) {
+    document.getElementById(btnId).disabled = true;
+    show(respId, 'Processing...', 'loading');
+}
+
+function resetBtn(btnId, inputId) {
+    const val = document.getElementById(inputId)?.value.trim();
+    document.getElementById(btnId).disabled = !val;
+}
+
+// ── File upload ────────────────────────────────────────────────────────────
+
+function onFileSelected() {
+    const file = document.getElementById('fileInput').files[0];
+    if (!file) return;
+    const fn = document.getElementById('fileName');
+    fn.textContent = '📎 ' + file.name;
+    fn.style.display = 'block';
+    document.getElementById('uploadBtn').disabled = false;
+}
+
+async function uploadDoc() {
+    const file = document.getElementById('fileInput').files[0];
+    if (!file) return;
+    setLoading('uploadBtn', 'uploadResp');
+    try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const r = await fetch(`${API}/upload`, { method: 'POST', body: fd });
+        const d = await r.json();
+        if (r.ok) {
+            show('uploadResp',
+                '✓ ' + d.filename + ' uploaded\n' +
+                'Pages: ' + d.pages_loaded + '  |  Chunks: ' + d.chunks_created,
+                'success');
+        } else {
+            show('uploadResp', 'Error: ' + d.detail, 'error');
         }
+    } catch(e) {
+        show('uploadResp', 'Connection error: ' + e.message, 'error');
+    } finally {
+        document.getElementById('uploadBtn').disabled = false;
+    }
+}
 
-        checkConnection();
+// ── Ask question ───────────────────────────────────────────────────────────
 
-        // ── Helper: show response ─────────────────────────────────────────
-
-        function showResponse(id, message, type = 'success') {
-            const el = document.getElementById(id);
-            el.textContent = message;
-            el.className = `response ${type}`;
-        }
-
-        function setLoading(btnId, responseId, loading) {
-            document.getElementById(btnId).disabled = loading;
-            if (loading) showResponse(responseId, 'Processing...', 'loading');
-        }
-
-        // ── Upload Document ───────────────────────────────────────────────
-
-        async function uploadDocument() {
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-
-            if (!file) {
-                showResponse('uploadResponse', 'Please select a file first.', 'error');
-                return;
-            }
-
-            setLoading('uploadBtn', 'uploadResponse', true);
-
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
-
-                const res = await fetch(`${API}/upload`, {
-                    method: 'POST',
-                    body: formData
-                    // Note: don't set Content-Type header for FormData
-                    // the browser sets it automatically with the boundary
-                });
-
-                const data = await res.json();
-
-                if (res.ok) {
-                    showResponse('uploadResponse',
-                        `✓ ${data.filename} uploaded successfully\n` +
-                        `Pages: ${data.pages_loaded} | Chunks: ${data.chunks_created}`,
-                        'success'
-                    );
-                } else {
-                    showResponse('uploadResponse', `Error: ${data.detail}`, 'error');
-                }
-            } catch (err) {
-                showResponse('uploadResponse', `Failed to connect to API: ${err.message}`, 'error');
-            } finally {
-                document.getElementById('uploadBtn').disabled = false;
-            }
-        }
-
-        // ── Ask Question ──────────────────────────────────────────────────
-
-        async function askQuestion() {
-            const question = document.getElementById('questionInput').value.trim();
-
-            if (!question) {
-                showResponse('askResponse', 'Please enter a question.', 'error');
-                return;
-            }
-
-            setLoading('askBtn', 'askResponse', true);
-
-            try {
-                const res = await fetch(`${API}/ask`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ question })
-                });
-
-                const data = await res.json();
-
-                if (res.ok) {
-                    showResponse('askResponse', data.answer, 'success');
-                } else {
-                    showResponse('askResponse', `Error: ${data.detail}`, 'error');
-                }
-            } catch (err) {
-                showResponse('askResponse', `Failed to connect to API: ${err.message}`, 'error');
-            } finally {
-                document.getElementById('askBtn').disabled = false;
-            }
-        }
-
-        // ── Summarize Meeting ─────────────────────────────────────────────
-
-        async function summarizeMeeting() {
-            const text = document.getElementById('summaryInput').value.trim();
-
-            if (!text) {
-                showResponse('summaryResponse', 'Please paste some meeting notes.', 'error');
-                return;
-            }
-
-            setLoading('summarizeBtn', 'summaryResponse', true);
-
-            try {
-                const res = await fetch(`${API}/summarize`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text })
-                });
-
-                const data = await res.json();
-
-                if (res.ok) {
-                    showResponse('summaryResponse', data.summary, 'success');
-                } else {
-                    showResponse('summaryResponse', `Error: ${data.detail}`, 'error');
-                }
-            } catch (err) {
-                showResponse('summaryResponse', `Failed to connect to API: ${err.message}`, 'error');
-            } finally {
-                document.getElementById('summarizeBtn').disabled = false;
-            }
-        }
-
-        // ── Extract Tasks ─────────────────────────────────────────────────
-
-        async function extractTasks() {
-            const text = document.getElementById('tasksInput').value.trim();
-
-            if (!text) {
-                showResponse('tasksResponse', 'Please paste some meeting notes.', 'error');
-                return;
-            }
-
-            setLoading('tasksBtn', 'tasksResponse', true);
-
-            try {
-                const res = await fetch(`${API}/extract-tasks`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text })
-                });
-
-                const data = await res.json();
-
-                if (res.ok) {
-                    renderTasks('tasksResponse', data.tasks);
-                } else {
-                    showResponse('tasksResponse', `Error: ${data.detail}`, 'error');
-                }
-            } catch (err) {
-                showResponse('tasksResponse', `Failed to connect to API: ${err.message}`, 'error');
-            } finally {
-                document.getElementById('tasksBtn').disabled = false;
-            }
-        }
-
-        // ── Render task cards ─────────────────────────────────────────────
-
-        function renderTasks(responseId, tasksData) {
-            const el = document.getElementById(responseId);
-
-            // Handle case where LLM returned raw text instead of JSON
-            if (typeof tasksData === 'string') {
-                showResponse(responseId, tasksData, 'success');
-                return;
-            }
-
-            const tasks = tasksData.tasks || [];
-
-            if (tasks.length === 0) {
-                showResponse(responseId, 'No tasks found in the meeting notes.', 'success');
-                return;
-            }
-
-            let html = `<div class="task-list">`;
-
-            tasks.forEach(task => {
-                const priorityClass = `priority-${task.priority?.toLowerCase() || 'medium'}`;
-                html += `
-                    <div class="task-card">
-                        <div class="task-title">${task.task}</div>
-                        <div class="task-meta">
-                            <span>👤 ${task.owner}</span>
-                            <span>📅 ${task.due_date}</span>
-                            <span class="${priorityClass}">● ${task.priority} priority</span>
-                        </div>
-                    </div>
-                `;
-            });
-
-            html += `</div>`;
-
-            el.innerHTML = html;
-            el.className = 'response success';
-        }
-
-        // ── Allow pressing Enter to ask question ──────────────────────────
-
-        document.getElementById('questionInput').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') askQuestion();
+async function askQ() {
+    const q = document.getElementById('questionInput').value.trim();
+    if (!q) return;
+    setLoading('askBtn', 'askResp');
+    try {
+        const r = await fetch(`${API}/ask`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question: q })
         });
+        const d = await r.json();
+        if (r.ok) show('askResp', d.answer, 'success');
+        else show('askResp', 'Error: ' + d.detail, 'error');
+    } catch(e) {
+        show('askResp', 'Connection error: ' + e.message, 'error');
+    } finally {
+        resetBtn('askBtn', 'questionInput');
+    }
+}
 
-    </script>
+// ── Toggle extract tasks ───────────────────────────────────────────────────
+
+function toggleExtract() {
+    extractOn = !extractOn;
+    const t = document.getElementById('extractToggle');
+    if (extractOn) t.classList.add('on');
+    else t.classList.remove('on');
+}
+
+// ── Clear meeting textarea ─────────────────────────────────────────────────
+
+function clearMeeting() {
+    document.getElementById('meetingInput').value = '';
+    document.getElementById('processBtn').disabled = true;
+    document.getElementById('summaryResp').className = 'response';
+    document.getElementById('tasksContainer').style.display = 'none';
+}
+
+// ── Process meeting ────────────────────────────────────────────────────────
+
+async function processMeeting() {
+    const text = document.getElementById('meetingInput').value.trim();
+    if (!text) return;
+    setLoading('processBtn', 'summaryResp');
+    document.getElementById('tasksContainer').style.display = 'none';
+
+    try {
+        // Always summarize
+        const sr = await fetch(`${API}/summarize`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+        });
+        const sd = await sr.json();
+        if (!sr.ok) { show('summaryResp', 'Error: ' + sd.detail, 'error'); return; }
+        show('summaryResp', sd.summary, 'success');
+
+        // Optionally extract tasks
+        if (extractOn) {
+            const tr = await fetch(`${API}/extract-tasks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            const td = await tr.json();
+            if (tr.ok) renderTasks(td.tasks);
+        }
+    } catch(e) {
+        show('summaryResp', 'Connection error: ' + e.message, 'error');
+    } finally {
+        resetBtn('processBtn', 'meetingInput');
+    }
+}
+
+// ── Render task cards ──────────────────────────────────────────────────────
+
+function renderTasks(data) {
+    const box = document.getElementById('tasksContainer');
+    if (typeof data === 'string') {
+        box.innerHTML = '<div class="response success" style="display:block; white-space:pre-wrap">' + data + '</div>';
+        box.style.display = 'block';
+        return;
+    }
+    const tasks = data.tasks || data || [];
+    if (!tasks.length) return;
+
+    let html = '<div style="font-size:13px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Extracted tasks</div>';
+    html += '<div class="task-list">';
+    tasks.forEach(t => {
+        const pc = 'p-' + (t.priority || 'medium').toLowerCase();
+        html += `<div class="task-item">
+            <div class="task-name">${t.task}</div>
+            <div class="task-meta">
+                <span>👤 ${t.owner || 'TBD'}</span>
+                <span>📅 ${t.due_date || 'TBD'}</span>
+                <span class="${pc}">● ${t.priority || 'medium'}</span>
+            </div>
+        </div>`;
+    });
+    html += '</div>';
+    box.innerHTML = html;
+    box.style.display = 'block';
+}
+</script>
 </body>
 </html>
