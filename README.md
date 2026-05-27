@@ -59,7 +59,7 @@ RecursiveCharacterTextSplitter → 500 char chunks, 50 char overlap
     ↓
 OpenAI Embeddings → vectors
     ↓
-ChromaDB → vector storage (replaces previous on each upload)
+ChromaDB → vector storage (collection cleared via delete_collection() on each upload)
 
 ─── Query time ───
 
@@ -103,9 +103,11 @@ context. Tested with out-of-scope questions — system correctly returns
 "not enough information" rather than falling back to training data.
 
 **Replace-on-upload strategy**
-Each upload replaces the entire database. This avoids data consistency
-issues where multiple versions of the same document would cause
-conflicting answers with the same name but different content.
+Each upload clears the existing ChromaDB collection via `delete_collection()` 
+and rebuilds it from the new document. This avoids data consistency issues 
+where multiple versions of the same document would cause conflicting answers. 
+Using the ChromaDB API rather than deleting the folder keeps the SQLite 
+connection stable within the same process.
 
 **Retry with exponential backoff**
 All LLM calls are wrapped in retry logic with exponential backoff
