@@ -152,6 +152,9 @@ echo "OPENAI_API_KEY=your-key-here" > .env
 
 # Run
 uvicorn main:app --reload
+
+# Run tests
+pytest tests/ -v
 ```
 
 Open `http://localhost:8000/ui` for the browser interface.
